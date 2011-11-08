@@ -1,0 +1,72 @@
+!!! 5
+html(lang="en")
+    head
+        title= title
+        script(type='text/javascript', src='javascripts/jquery-1.6.4.min.js')
+        script(type='text/javascript', src='javascripts/leaflet.js')
+        link(rel='stylesheet', href='javascripts/leaflet.css')
+    body
+        div(id='mapContainer', style='width: 800px; height: 550px;')
+        script(type='text/javascript')
+            var map;
+            var cadastralLayer;
+
+            $(document).ready(function () {
+                map = new L.Map('mapContainer');
+
+                var url = 'http://{s}.tile.cloudmade.com/1a595b41791a4984906adf54f7ec5173/997/256/{z}/{x}/{y}.png';
+                var copyright = 'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade';
+                var tileLayer = new L.TileLayer(url, {maxZoom: 20, attribution: copyright});
+                var startPosition = new L.LatLng(-27.43247,153.065654);
+
+                map.on('load', function(e) {
+                    requestUpdatedCadastre(e.target.getBounds());
+                });
+
+                map.setView(startPosition, 17).addLayer(tileLayer);
+
+                map.on('moveend', function(e) {
+                    requestUpdatedCadastre(e.target.getBounds());
+                });
+
+                cadastralLayer = createGeoJsonLayer();
+
+                cadastralLayer.addGeoJSON(data);
+                map.addLayer(cadastralLayer);
+
+            });
+
+            function requestUpdatedCadastre(bounds) {
+                $.ajax(
+                    {
+                        type: 'POST',
+                        url: '/RetrieveCadastre',
+                        dataType: 'json',
+                        data: JSON.stringify(bounds),
+                        contentType: 'application/json; charset=utf-8',
+                        success: function (result) {
+                            parseResponseCadastre(result)
+                        },
+                        error: function (req, status, error) {
+                            alert('Unable to get cadastral data');
+                        }
+                    });
+            }
+
+            function parseResponseCadastre(data) {
+                if (cadastralLayer != undefined)
+                {
+                    map.removeLayer(cadastralLayer);
+                }
+                cadastralLayer = createGeoJsonLayer();
+                cadastralLayer.addGeoJSON(data);
+                map.addLayer(cadastralLayer);
+            }
+
+            function createGeoJsonLayer () {
+                var layer = new L.GeoJSON();
+                layer.on('featureparse', function(e) {
+                    e.layer.setStyle({ color:  '#003300', weight: 2, fill: true, fillColor: '#009933' });
+                });
+                return layer;
+            }
